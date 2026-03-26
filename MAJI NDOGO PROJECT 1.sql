@@ -1,0 +1,242 @@
+-- SHOW A LIST OF ALL THE TABLES IN OUR DATABASE
+Show tables;
+
+-- HAVING A GLIMPSE OF WHAT THE LOCATION, VISITS, WATER_SOURCE, DATA_DICTIONARY TABLE LOOKS LIKE. 
+-- SET LIMIT OF ROWS TO TEN SO THAT YOU DO NOT HAVE TO SPECIFY IT ON EVERY LINE OF CODE.
+
+SELECT 
+	*
+FROM 
+	location
+LIMIT 10;
+
+
+SELECT 
+	*
+FROM 
+	visits
+LIMIT 10;
+
+SELECT 
+	*
+FROM 
+	water_source;
+
+SELECT
+	*
+FROM 
+	data_dictionary;
+
+-- LET US TRY AND EXPLORE THE TYPE OF WATER SOURCES ( NOTE WE HAVE TO SELECT DISTINCT
+-- SO THAT WE CAN GET UNIQUE TYPES INSTEAD OF EVERYTHING, THIS WILL GIVE US A HANG OF WHAT WE ARE DEALING WITH 
+-- EXACTLY.
+
+SELECT 
+	DISTINCT type_of_water_source
+FROM 
+	water_source;
+
+-- WE HAVE A TABLE IN OUR DATA BASE THAT LOGS THE VISITS MADE TO DIFFERENT WATER SOURCES
+-- FIRST IDENTIFY THIS TABLE?
+
+SELECT 
+	* 
+FROM 
+	visits;
+
+-- WRITE AN SQL QUERY THAT RETRIEVES ALL RECORDS FROM THIS TABLE WHERE THE TIME_IN_QUEUE IS MORE
+-- THAN SOME CRAZY TIME, SAY 500 MIN.
+
+SELECT 
+	*
+FROM 
+	visits
+WHERE 
+	time_in_queue > 500;
+
+-- LET US FIND OUT WHAT TYPE OF WATER SOURCES QUEUE FOR THIS LONG
+-- YOU WILL NOTICE THAT QUEUE TIME IS 0 FOR OTHER SOURCE_ID'S.
+-- SO LET US HAVE A LOOK ON THESE SOURCE_ID'S.
+
+SELECT 
+	type_of_water_source,
+	source_id,
+	number_of_people_served
+FROM 
+	water_source 
+WHERE 
+	source_id IN ('KiRu28935224' , 'SoRu37635224' , 'SoRu36096224');
+
+-- WRITE A QUERY TO FIND RECORDS WHERE THE SUBJECT_QUALITY_SCORE IS 10
+-- ONLY LOOKING FOR HOME TAPS
+-- AND WHERE THE SOURCE WAS VISITED A SECOND TIME.
+
+SELECT 
+	subjective_quality_score,
+	visit_count,
+	record_id
+FROM 
+	water_quality
+WHERE 
+	subjective_quality_score = 10
+AND 
+	visit_count = 2;
+
+-- 11:43 WRITE A QUERY THAT CHECKS IF THE RESULTS IS CLEAN BUT THE BIOLOGICAL COLUMN IS > 0.01
+-- NOTE THAT 0 = CLEAN AND 0.01 = CONTAMINATED.
+
+SELECT 
+	*
+FROM 
+	well_pollution
+WHERE 
+	results = 'clean' 
+AND 
+	biological > 0.01;
+
+-- 12:09 WE NEED TO IDENTIFY THE RECORDS THAT MISTAKENLY HAVE THE WORD CLEAN IN THE DESCRIPTION.
+-- NB REMEMBER THAT NOT ALL OF OUR FIELD SURVEYORS USED THE DESCRIPTION TO SET THE RESULTS,
+-- SOME CHECKED THE ACTUAL DATA.
+-- 12:14 FIND THESE DESCRIPTIONS, YOU SHOULD GET 38 ROWS RETURNED.
+
+SELECT 
+	* 
+FROM 
+	well_pollution
+WHERE 
+	description LIKE 'clean%'
+AND 
+	biological > 0.01;
+
+-- 12:26 - 12:49
+-- CASE 1A. IN OUR WELL_POLLUTION TABLE WE WILL NEED TO UPDATE THE DESCRIPTION COLUMN
+-- FROM CLEAN BACTERIA: E.COLI TO BACTERIA: E.COLI
+-- CASE 1B. AND CLEAN BACTERIA: GIARDIA LAMBLIA TO BACTERIA: GIARDIA LAMBLIA
+-- CASE 2. SO ON THE RESULTS COLUMN , UPDATE THE RESULTS COLUMN FROM CLEAN TO CONTAMINATED: BIOLOGICAL
+-- WHERE THE BIOLOGICAL COLUMN HAS A VALUE GREATER THAN 0.01.
+
+-- STEPS ON HOW I WOULD APPROACH THIS
+
+CASE 1A. 
+UPDATE
+	UPDATE WELL_POLLUTION TABLE
+SET
+	CHANGE DESCRIPTION TO 'BACTERIA: E.COLI'
+WHERE
+	WHERE THE DESCRIPTION IS 'CLEAN BACTERIA: E.COLI'
+    
+CASE 1B.
+UPDATE
+	UPDATE WELL_POLLUTION TABLE
+SET
+	CHANGE DESCRIPTION TO 'BACTERIA: GIARDIA LAMBLIA'
+WHERE 
+	WHERE THE DESCRIPTION IS 'CLEAN BACTERIA: E.COLI'
+    
+CASE 2. 
+UPDATE
+	UPDATE WELL_POLLUTION TABLE
+SET
+	CHANGE RESULTS TO 'CONTAMINATED: BIOLOGICAL'
+WHERE 
+	BIOLOGICAL > 0.01
+AND 
+	RESULTS = 'CLEAN'
+
+-- 12:56 WE HAVE TO CREATE A NEW TABLE FROM THE RESULTS SET OF A QUERY IN 12:38
+-- THIS METHOD IS USEFUL FOR CREATING BACKUP TABLES OR SUBSETS WITHOUT THE NEED FOR A SEPERATE 
+-- 1 CREATE TABLE and 
+-- 2 INSERT INTO STATEMENT
+
+CREATE TABLE
+	md_water_services.well_pollution_copy
+AS (
+	SELECT
+		*
+	FROM
+		md_water_services.well_pollution
+	);
+
+-- 13:11 
+
+SET SQL_SAFE_UPDATES = 0;
+
+UPDATE
+	well_pollution_copy
+SET 
+	description = 'Bacteria: E. coli'
+WHERE 
+	description = 'Clean Bacteria: E. coli';
+    
+UPDATE
+	well_pollution_copy
+SET
+	description = 'Bacteria: Giardia Lamblia'
+WHERE 
+	description = 'Clean Bacteria: Giardia Lamblia';
+    
+UPDATE
+	well_pollution_copy
+SET
+	results = 'Contaminated: Biological'
+WHERE 
+	biological > 0.01 
+AND 
+	results = 'Clean';
+    
+-- NOW WE WANT TO KNOW IF OUR UPDATES WORKED WELL , SO WE WILL USE A QUERY ON OUR TABLE COPY.
+
+SELECT
+	*
+FROM
+	well_pollution_copy
+WHERE
+	description LIKE 'Clean_%'
+    OR (results = 'clean' AND biological > 0.01);
+    
+-- 13:19 since we have tested that it works as intended we can now update the 
+-- real table and delete the copy one.
+
+UPDATE
+	well_pollution
+SET
+	description = 'Bacteria: E. coli'
+WHERE
+	description = 'Clean Bacteria: E. coli';
+    
+UPDATE
+	well_pollution
+SET
+	description = 'Bacteria: Giardia Lamblia'
+WHERE
+	description = 'Clean Bacteria: Giardia Lamblia';
+    
+UPDATE
+	well_pollution
+SET
+	results = 'Contaminated: Biological'
+WHERE
+	biological > 0.01 
+AND 
+	results = 'Clean';
+    
+DROP TABLE
+	-- md_water_services.well_pollution_copy;
+    
+-- TO TEST IF THE TABLE UPDATE WORKED
+    
+SELECT
+	*
+FROM
+	well_pollution
+WHERE
+	description LIKE 'Clean_%'
+OR 
+	(results = 'clean' AND biological > 0.01);
+    
+
+
+
+
+
+
